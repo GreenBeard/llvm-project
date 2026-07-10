@@ -50350,7 +50350,7 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
     }
   }
 
-  // Or (CMOV (BSR ?, (ADD X, 1)), Y, ((ADD X, 1) eflags)) -> (BSR Y, X)
+  // Or (CMOV (BSR ?, (ADD X, 1)), Y, ((ADD X, 1) eflags)) -> (BSR Y, (ADD X, 1))
   if (CC == X86::COND_E && Cond.getOpcode() == X86ISD::ADD && isOneConstant(Cond.getOperand(1)) && Cond.getResNo() == 1) {
     if (Subtarget.hasBitScanPassThrough() && FalseOp.getOpcode() == X86ISD::BSR &&
         FalseOp.getResNo() == 0 && FalseOp.hasOneUse()) {
