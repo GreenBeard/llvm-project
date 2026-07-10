@@ -50354,9 +50354,9 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
   if (CC == X86::COND_E && Cond.getOpcode() == X86ISD::INC && Cond.getResNo() == 1) {
     if (Subtarget.hasBitScanPassThrough() && FalseOp.getOpcode() == X86ISD::BSR &&
         FalseOp.getResNo() == 0 && FalseOp.hasOneUse() &&
-        FalseOp.getOperand(1).getOpcode() == X86ISD::INC && FalseOp.getOperand(1).getResNo() == 0
+        FalseOp.getOperand(1).getOpcode() == X86ISD::INC && FalseOp.getOperand(1).getResNo() == 0 &&
         FalseOp.getOperand(1).getOperand(0) == Cond.getOperand(0)) {
-      return DAG.getNode(FalseOp.getOpcode(), DL, FalseOp->getVTList(), Const,
+      return DAG.getNode(FalseOp.getOpcode(), DL, FalseOp->getVTList(), TrueOp,
                          FalseOp.getOperand(1));
     }
   }
