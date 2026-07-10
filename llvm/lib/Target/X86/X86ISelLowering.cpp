@@ -50313,6 +50313,7 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
   //    (ADD (CMOV (CTTZ X), C1-C2, (X == 0)), C2)
   // Or (CMOV (BSR ?, X), Y, (X == 0)) -> (BSR Y, X)
   // TODO: Or (CMOV (BSF ?, X), Y, (X == 0)) -> (BSF Y, X)
+  // coffin
   if ((CC == X86::COND_NE || CC == X86::COND_E) &&
       Cond.getOpcode() == X86ISD::CMP && isNullConstant(Cond.getOperand(1))) {
     SDValue Add = TrueOp;
@@ -50346,6 +50347,17 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
           DAG.getNode(X86ISD::CMOV, DL, VT, Diff, Add.getOperand(0),
                       DAG.getTargetConstant(X86::COND_NE, DL, MVT::i8), Cond);
       return DAG.getNode(ISD::ADD, DL, VT, CMov, Add.getOperand(1));
+    }
+  }
+
+  // Or (CMOV (BSR ?, INC X), Y, (INC X eflags)) -> (BSR Y, X)
+  if (CC == X86::COND_E && Cond.getOpcode() == X86ISD::INC && Cond.getResNo() == 1) {
+    if (Subtarget.hasBitScanPassThrough() && FalseOp.getOpcode() == X86ISD::BSR &&
+        FalseOp.getResNo() == 0 && FalseOp.hasOneUse() &&
+        FalseOp.getOperand(1).getOpcode() == X86ISD::INC && FalseOp.getOperand(1).getResNo() == 0
+        FalseOp.getOperand(1).getOperand(0) == Cond.getOperand(0)) {
+      return DAG.getNode(FalseOp.getOpcode(), DL, FalseOp->getVTList(), Const,
+                         FalseOp.getOperand(1));
     }
   }
 

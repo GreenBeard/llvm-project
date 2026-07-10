@@ -2087,6 +2087,18 @@ defm : OneBitPats<GR16, i16, BTR16rr, BTS16rr, BTC16rr, shiftMask16>;
 defm : OneBitPats<GR32, i32, BTR32rr, BTS32rr, BTC32rr, shiftMask32>;
 defm : OneBitPats<GR64, i64, BTR64rr, BTS64rr, BTC64rr, shiftMask64>;
 
+// coffin
+// def : Pat<(or GR16:$src1, (trunc (shl (i32 1), GR8:$src2))),
+//           (EXTRACT_SUBREG (BTS32rr (SUBREG_TO_REG GR16:$src1, sub_16bit),
+//                (INSERT_SUBREG (i32 (IMPLICIT_DEF)), GR8:$src2, sub_8bit)), sub_16bit)>;
+
+// def : Pat<(or GR16:$src1, (trunc (shl (i64 1), GR8:$src2))),
+//           (EXTRACT_SUBREG (BTS64rr (SUBREG_TO_REG GR16:$src1, sub_16bit),
+//                (INSERT_SUBREG (i64 (IMPLICIT_DEF)), GR8:$src2, sub_8bit)), sub_16bit)>;
+// def : Pat<(or GR32:$src1, (trunc (shl (i64 1), GR8:$src2))),
+//           (EXTRACT_SUBREG (BTS64rr (SUBREG_TO_REG GR32:$src1, sub_32bit),
+//                (INSERT_SUBREG (i64 (IMPLICIT_DEF)), GR8:$src2, sub_8bit)), sub_32bit)>;
+
 // Flag-producing variants: reuse the BTR/BTS/BTC encodings so CF can replace
 // a separate X86ISD::BT. Emitted by a DAG combine in combineBT. Only i32/i64
 // since getBT promotes <32-bit Src to i32 before creating X86ISD::BT. Unlike
