@@ -25673,16 +25673,36 @@ static bool isX86LogicalCmp(SDValue Op) {
   return false;
 }
 
-static bool isX86ZeroCmp(SDValue Op, SDValue* value) {
+/// Returns true if Op directly or indirectly compares a general purpose
+/// register with zero and sets ZF.
+///
+/// Upon returning true sets *Value to the value compared to zero.
+static bool isX86ZeroCmp(SDValue Op, SDValue *Value, int *FlagsResNo) {
+  // SDTBinaryArithWithFlags is a useful reference
+
   unsigned Opc = Op.getOpcode();
-  if (Opc == X86ISD::CMP || Opc == X86ISD::COMI || Opc == X86ISD::UCOMI ||
-      Opc == X86ISD::FCMP)
+  if (Opc == X86ISD::CMP && isNullConstant(Op.getOperand(1))) {
+    *FlagsResNo = -1;
+    *Value = Op.getOperand(0);
     return true;
+  }
+
   if (Op.getResNo() == 1 &&
       (Opc == X86ISD::ADD || Opc == X86ISD::SUB || Opc == X86ISD::ADC ||
-       Opc == X86ISD::SBB || Opc == X86ISD::SMUL || Opc == X86ISD::UMUL ||
-       Opc == X86ISD::OR || Opc == X86ISD::XOR || Opc == X86ISD::AND))
+       Opc == X86ISD::SBB || Opc == X86ISD::OR || Opc == X86ISD::XOR ||
+       Opc == X86ISD::AND)) {
+    *FlagsResNo = 1;
+    *Value = Op;
     return true;
+  }
+
+  if (Op.getResNo() == 1 &&
+      (Opc == X86ISD::BSF || Opc == X86ISD::BSR)) {
+    // TODO: operand 0, or 1?
+    *FlagsResNo = -1;
+    *Value = Opc.getOperand(1);
+    return true;
+  }
 
   return false;
 }
@@ -50365,15 +50385,20 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
     }
   }
 
-  // Or (CMOV (BSR ?, (ADD X, 1)), Y, ((ADD X, 1) eflags)) -> (BSR Y, (ADD X, 1))
-  if (CC == X86::COND_E && Cond.getOpcode() == X86ISD::ADD && isOneConstant(Cond.getOperand(1)) && Cond.getResNo() == 1) {
-    if (Subtarget.hasBitScanPassThrough() && FalseOp.getOpcode() == X86ISD::BSR &&
-        FalseOp.getResNo() == 0 && FalseOp.hasOneUse()) {
-      SDValue BsrAdd = FalseOp.getOperand(1);
-      if (BsrAdd.getOpcode() == X86ISD::ADD && isOneConstant(BsrAdd.getOperand(1)) && BsrAdd.getResNo() == 0 &&
-          BsrAdd.getOperand(0) == Cond.getOperand(0)) {
-        return DAG.getNode(FalseOp.getOpcode(), DL, FalseOp->getVTList(), TrueOp,
-                           BsrAdd);
+  // Or (CMOV (BSR ?, FOO), Y, (FOO eflags)) -> (BSR Y, FOO)
+  // Or (CMOV (BSR ?, X), Y, (X == 0)) -> (BSR Y, X)
+  // Do I want to fold:
+  // Or (CMOV (BSR ?, X eflags), Y, X eflags) -> (BSR Y, X eflags)
+  if (CC == X86::COND_E && FalseOp.getOpcode() == X86ISD::BSR) {
+    SDValue BsrOp = FalseOp;
+    SDValue ZeroCmpSrc;
+    int FlagsResNo;
+    if (isX86ZeroCmp(Cond, &ZeroCmpSrc, &FlagsResNo) && ZeroCmpSrc.hasOneUse() &&
+        Subtarget.hasBitScanPassThrough() && BsrOp.getResNo() == 0 && BsrOp.hasOneUse()) {
+      SDValue BsrFoo = BsrOp.getOperand(1);
+      if (BsrFoo.getNode() == ZeroCmpSrc.getNode() && BsrFoo.getResNo() != FlagsResNo) {
+        return DAG.getNode(BsrOp.getOpcode(), DL, BsrOp->getVTList(), TrueOp,
+                           BsrFoo);
       }
     }
   }
