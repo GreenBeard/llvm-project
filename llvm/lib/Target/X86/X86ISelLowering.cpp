@@ -25673,38 +25673,29 @@ static bool isX86LogicalCmp(SDValue Op) {
   return false;
 }
 
-/// Returns true if Op directly or indirectly compares a general purpose
-/// register with zero and sets ZF.
-///
-/// Upon returning true sets *Value to the value compared to zero.
-static bool isX86ZeroCmp(SDValue Op, SDValue *Value, int *FlagsResNo) {
+/// Returns the value that Op directly or indirectly compares as a general
+/// purpose register with zero and sets ZF.
+static std::optional<SDValue> isX86ZeroCmp(SDValue Op) {
   // SDTBinaryArithWithFlags is a useful reference
 
   unsigned Opc = Op.getOpcode();
   if (Opc == X86ISD::CMP && isNullConstant(Op.getOperand(1))) {
-    *FlagsResNo = -1;
-    *Value = Op.getOperand(0);
-    return true;
+    return Op.getOperand(0);
   }
 
   if (Op.getResNo() == 1 &&
       (Opc == X86ISD::ADD || Opc == X86ISD::SUB || Opc == X86ISD::ADC ||
        Opc == X86ISD::SBB || Opc == X86ISD::OR || Opc == X86ISD::XOR ||
        Opc == X86ISD::AND)) {
-    *FlagsResNo = 1;
-    *Value = Op;
-    return true;
+    return SDValue(Op.getNode(), 0);
   }
 
-  if (Op.getResNo() == 1 &&
-      (Opc == X86ISD::BSF || Opc == X86ISD::BSR)) {
+  if (Op.getResNo() == 1 && (Opc == X86ISD::BSF || Opc == X86ISD::BSR)) {
     // TODO: operand 0, or 1?
-    *FlagsResNo = -1;
-    *Value = Opc.getOperand(1);
-    return true;
+    return Opc.getOperand(1);
   }
 
-  return false;
+  return std::nullopt;
 }
 
 static bool isTruncWithZeroHighBitsInput(SDValue V, SelectionDAG &DAG) {
@@ -50387,16 +50378,13 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
 
   // Or (CMOV (BSR ?, FOO), Y, (FOO eflags)) -> (BSR Y, FOO)
   // Or (CMOV (BSR ?, X), Y, (X == 0)) -> (BSR Y, X)
-  // Do I want to fold:
-  // Or (CMOV (BSR ?, X eflags), Y, X eflags) -> (BSR Y, X eflags)
   if (CC == X86::COND_E && FalseOp.getOpcode() == X86ISD::BSR) {
     SDValue BsrOp = FalseOp;
-    SDValue ZeroCmpSrc;
-    int FlagsResNo;
-    if (isX86ZeroCmp(Cond, &ZeroCmpSrc, &FlagsResNo) && ZeroCmpSrc.hasOneUse() &&
+    std::optional<SDValue> ZeroCmpSrc = isX86ZeroCmp(Cond);
+    if (ZeroCmpSrc.has_value() && ZeroCmpSrc.value().hasOneUse() &&
         Subtarget.hasBitScanPassThrough() && BsrOp.getResNo() == 0 && BsrOp.hasOneUse()) {
       SDValue BsrFoo = BsrOp.getOperand(1);
-      if (BsrFoo.getNode() == ZeroCmpSrc.getNode() && BsrFoo.getResNo() != FlagsResNo) {
+      if (BsrFoo == ZeroCmpSrc.value()) {
         return DAG.getNode(BsrOp.getOpcode(), DL, BsrOp->getVTList(), TrueOp,
                            BsrFoo);
       }
