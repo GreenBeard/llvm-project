@@ -25657,8 +25657,23 @@ static SDValue LowerXALUO(SDValue Op, SelectionDAG &DAG) {
   return DAG.getNode(ISD::MERGE_VALUES, DL, Op->getVTList(), Value, SetCC);
 }
 
+// coffin
 /// Return true if opcode is a X86 logical comparison.
 static bool isX86LogicalCmp(SDValue Op) {
+  unsigned Opc = Op.getOpcode();
+  if (Opc == X86ISD::CMP || Opc == X86ISD::COMI || Opc == X86ISD::UCOMI ||
+      Opc == X86ISD::FCMP)
+    return true;
+  if (Op.getResNo() == 1 &&
+      (Opc == X86ISD::ADD || Opc == X86ISD::SUB || Opc == X86ISD::ADC ||
+       Opc == X86ISD::SBB || Opc == X86ISD::SMUL || Opc == X86ISD::UMUL ||
+       Opc == X86ISD::OR || Opc == X86ISD::XOR || Opc == X86ISD::AND))
+    return true;
+
+  return false;
+}
+
+static bool isX86ZeroCmp(SDValue Op, SDValue* value) {
   unsigned Opc = Op.getOpcode();
   if (Opc == X86ISD::CMP || Opc == X86ISD::COMI || Opc == X86ISD::UCOMI ||
       Opc == X86ISD::FCMP)
