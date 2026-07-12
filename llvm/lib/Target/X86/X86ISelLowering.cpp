@@ -24401,6 +24401,11 @@ static SDValue EmitCmp(SDValue Op0, SDValue Op1, X86::CondCode X86CC,
   SDValue CmpOp = DAG.getNode(X86Opc, dl, VTs, Op0, Op1);
 
   if (IsdNode != nullptr) {
+#ifndef NDEBUG
+  dbgs() << "coffin: " << __func__ << " ";
+  IsdNode->dump(&DAG);
+#endif
+
     DAG.ReplaceAllUsesWith(IsdNode, &CmpOp);
   }
 
@@ -25683,6 +25688,11 @@ static bool isX86LogicalCmp(SDValue Op) {
 /// Returns the value that Op directly or indirectly compares as a general
 /// purpose register with zero and sets ZF.
 static std::optional<SDValue> isX86ZeroCmp(SDValue Op) {
+#ifndef NDEBUG
+  dbgs() << "coffin: " << __func__ << " resNo: " << Op.getResNo() << " ";
+  Op.dump();
+#endif
+
   // SDTBinaryArithWithFlags is a useful reference.
   //
   // Table F-1 in https://docs.amd.com/v/u/en-US/24594_3.37 is a useful
@@ -25696,6 +25706,10 @@ static std::optional<SDValue> isX86ZeroCmp(SDValue Op) {
 
   unsigned Opc = Op.getOpcode();
   if (Opc == X86ISD::CMP && isNullConstant(Op.getOperand(1))) {
+#ifndef NDEBUG
+  dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
+#endif
+
     return Op.getOperand(0);
   }
 
@@ -25703,12 +25717,24 @@ static std::optional<SDValue> isX86ZeroCmp(SDValue Op) {
       (Opc == X86ISD::ADD || Opc == X86ISD::SUB || Opc == X86ISD::ADC ||
        Opc == X86ISD::SBB || Opc == X86ISD::OR || Opc == X86ISD::XOR ||
        Opc == X86ISD::AND || Opc == X86ISD::BEXTR || Opc == X86ISD::BZHI)) {
+#ifndef NDEBUG
+  dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
+#endif
+
     return SDValue(Op.getNode(), 0);
   }
 
   if (Op.getResNo() == 1 && (Opc == X86ISD::BSF || Opc == X86ISD::BSR)) {
+#ifndef NDEBUG
+  dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
+#endif
+
     return Op.getOperand(1);
   }
+
+#ifndef NDEBUG
+  dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
+#endif
 
   return std::nullopt;
 }
@@ -50356,6 +50382,10 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
   // TODO: Or (CMOV (BSF ?, X), Y, (X == 0)) -> (BSF Y, X)
   // coffin
   if (CC == X86::COND_NE || CC == X86::COND_E) {
+#ifndef NDEBUG
+    dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
+#endif
+
     SDValue Add = TrueOp;
     SDValue Const = FalseOp;
     // Canonicalize the condition code for easier matching and output.
@@ -50368,9 +50398,17 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
       if (Subtarget.hasBitScanPassThrough() && Add.getOpcode() == X86ISD::BSR &&
           Add.getResNo() == 0 && Add.hasOneUse() &&
           Add.getOperand(1) == ZeroCmpSrc.value()) {
+#ifndef NDEBUG
+        dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
+#endif
+
         return DAG.getNode(Add.getOpcode(), DL, Add->getVTList(), Const,
                            Add.getOperand(1));
       }
+
+#ifndef NDEBUG
+      dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
+#endif
 
       // We might have replaced the constant in the cmov with the zero source
       // from the compare. If so change it to a literal zero.
