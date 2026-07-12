@@ -25676,7 +25676,11 @@ static bool isX86LogicalCmp(SDValue Op) {
 /// Returns the value that Op directly or indirectly compares as a general
 /// purpose register with zero and sets ZF.
 static std::optional<SDValue> isX86ZeroCmp(SDValue Op) {
-  // SDTBinaryArithWithFlags is a useful reference
+  // SDTBinaryArithWithFlags is a useful reference.
+  //
+  // Table F-1 in https://docs.amd.com/v/u/en-US/24594_3.37 is a useful
+  // reference for flags (although it is wrong as of version 3.37 in its claim
+  // that "Instructions not shown have no effect on RFLAGS.").
 
   unsigned Opc = Op.getOpcode();
   if (Opc == X86ISD::CMP && isNullConstant(Op.getOperand(1))) {
@@ -25692,8 +25696,13 @@ static std::optional<SDValue> isX86ZeroCmp(SDValue Op) {
 
   if (Op.getResNo() == 1 && (Opc == X86ISD::BSF || Opc == X86ISD::BSR)) {
     // TODO: operand 0, or 1?
-    return Opc.getOperand(1);
+    return Op.getOperand(1);
   }
+
+  // based upon output: lzcnt tzcnt andn bextr blsi blsr bzhi bextr blcfill blci
+  //   blcic blcmsk blcs blsfill blsic t1mskc tzmsk
+  // based upon input: popcnt
+  // ignore? blsmsk (fixed zf=0)
 
   return std::nullopt;
 }
