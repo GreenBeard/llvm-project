@@ -50386,7 +50386,8 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
 
   // Or (CMOV (BSR ?, FOO), Y, (FOO eflags)) -> (BSR Y, FOO)
   // Or (CMOV (BSR ?, X), Y, (X == 0)) -> (BSR Y, X)
-  if ((CC == X86::COND_NE || CC == X86::COND_E) && FalseOp.getOpcode() == X86ISD::BSR) {
+  if ((CC == X86::COND_NE || CC == X86::COND_E) &&
+      FalseOp.getOpcode() == X86ISD::BSR) {
     SDValue BsrOp;
     SDValue YOp;
 
