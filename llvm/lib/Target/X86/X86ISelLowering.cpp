@@ -25682,6 +25682,11 @@ static std::optional<SDValue> isX86ZeroCmp(SDValue Op) {
   // reference for flags (although it is wrong as of version 3.37 in its claim
   // that "Instructions not shown have no effect on RFLAGS.").
 
+  // NOT IN `X86ISD::*` CURRENTLY
+  // based upon output: lzcnt tzcnt andn blsi blsr blcfill blci blcic blcmsk
+  //   blcs blsfill blsic t1mskc tzmsk sal/sar/shl/shr popcnt
+  // ignore? blsmsk (fixed zf=0)
+
   unsigned Opc = Op.getOpcode();
   if (Opc == X86ISD::CMP && isNullConstant(Op.getOperand(1))) {
     return Op.getOperand(0);
@@ -25690,18 +25695,13 @@ static std::optional<SDValue> isX86ZeroCmp(SDValue Op) {
   if (Op.getResNo() == 1 &&
       (Opc == X86ISD::ADD || Opc == X86ISD::SUB || Opc == X86ISD::ADC ||
        Opc == X86ISD::SBB || Opc == X86ISD::OR || Opc == X86ISD::XOR ||
-       Opc == X86ISD::AND)) {
+       Opc == X86ISD::AND || Opc == X86ISD::BEXTR || Opc == X86ISD::BZHI)) {
     return SDValue(Op.getNode(), 0);
   }
 
   if (Op.getResNo() == 1 && (Opc == X86ISD::BSF || Opc == X86ISD::BSR)) {
-    // TODO: operand 0, or 1?
     return Op.getOperand(1);
   }
-
-  // based upon output: lzcnt tzcnt andn bextr blsi blsr bzhi bextr blcfill blci
-  //   blcic blcmsk blcs blsfill blsic t1mskc tzmsk sal/sar/shl/shr popcnt
-  // ignore? blsmsk (fixed zf=0)
 
   return std::nullopt;
 }
