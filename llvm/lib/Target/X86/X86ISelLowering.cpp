@@ -25700,8 +25700,7 @@ static std::optional<SDValue> isX86ZeroCmp(SDValue Op) {
   }
 
   // based upon output: lzcnt tzcnt andn bextr blsi blsr bzhi bextr blcfill blci
-  //   blcic blcmsk blcs blsfill blsic t1mskc tzmsk
-  // based upon input: popcnt
+  //   blcic blcmsk blcs blsfill blsic t1mskc tzmsk sal/sar/shl/shr popcnt
   // ignore? blsmsk (fixed zf=0)
 
   return std::nullopt;
