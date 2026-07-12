@@ -50348,46 +50348,7 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
   // Or (CMOV (BSR ?, X), Y, (X == 0)) -> (BSR Y, X)
   // TODO: Or (CMOV (BSF ?, X), Y, (X == 0)) -> (BSF Y, X)
   // coffin
-  if ((CC == X86::COND_NE || CC == X86::COND_E) &&
-      Cond.getOpcode() == X86ISD::CMP && isNullConstant(Cond.getOperand(1))) {
-    SDValue Add = TrueOp;
-    SDValue Const = FalseOp;
-    // Canonicalize the condition code for easier matching and output.
-    if (CC == X86::COND_E)
-      std::swap(Add, Const);
-
-    // TODO: ADD BSF support, but requires changes to the "REP BSF" CTTZ hack.
-    if (Subtarget.hasBitScanPassThrough() && Add.getOpcode() == X86ISD::BSR &&
-        Add.getResNo() == 0 && Add.hasOneUse() &&
-        Add.getOperand(1) == Cond.getOperand(0)) {
-      return DAG.getNode(Add.getOpcode(), DL, Add->getVTList(), Const,
-                         Add.getOperand(1));
-    }
-
-    // We might have replaced the constant in the cmov with the LHS of the
-    // compare. If so change it to the RHS of the compare.
-    if (Const == Cond.getOperand(0))
-      Const = Cond.getOperand(1);
-
-    // Ok, now make sure that Add is (add (cttz X), C2) and Const is a constant.
-    if (isa<ConstantSDNode>(Const) && Add.getOpcode() == ISD::ADD &&
-        Add.hasOneUse() && isa<ConstantSDNode>(Add.getOperand(1)) &&
-        (Add.getOperand(0).getOpcode() == ISD::CTTZ_ZERO_POISON ||
-         Add.getOperand(0).getOpcode() == ISD::CTTZ) &&
-        Add.getOperand(0).getOperand(0) == Cond.getOperand(0)) {
-      // This should constant fold.
-      SDValue Diff = DAG.getNode(ISD::SUB, DL, VT, Const, Add.getOperand(1));
-      SDValue CMov =
-          DAG.getNode(X86ISD::CMOV, DL, VT, Diff, Add.getOperand(0),
-                      DAG.getTargetConstant(X86::COND_NE, DL, MVT::i8), Cond);
-      return DAG.getNode(ISD::ADD, DL, VT, CMov, Add.getOperand(1));
-    }
-  }
-
-  // Or (CMOV (BSR ?, FOO), Y, (FOO eflags)) -> (BSR Y, FOO)
-  // Or (CMOV (BSR ?, X), Y, (X == 0)) -> (BSR Y, X)
-  if ((CC == X86::COND_NE || CC == X86::COND_E) &&
-      FalseOp.getOpcode() == X86ISD::BSR) {
+  if (CC == X86::COND_NE || CC == X86::COND_E) {
     SDValue Add = TrueOp;
     SDValue Const = FalseOp;
     // Canonicalize the condition code for easier matching and output.
@@ -50395,13 +50356,32 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
       std::swap(Add, Const);
 
     std::optional<SDValue> ZeroCmpSrc = isX86ZeroCmp(Cond);
-    if (ZeroCmpSrc.has_value() && ZeroCmpSrc.value().hasOneUse() &&
-        Subtarget.hasBitScanPassThrough() && Add.getResNo() == 0 &&
-        Add.hasOneUse()) {
-      SDValue BsrFoo = Add.getOperand(1);
-      if (BsrFoo == ZeroCmpSrc.value()) {
+    if (ZeroCmpSrc.has_value()) {
+      // TODO: ADD BSF support, but requires changes to the "REP BSF" CTTZ hack.
+      if (Subtarget.hasBitScanPassThrough() && Add.getOpcode() == X86ISD::BSR &&
+          Add.getResNo() == 0 && Add.hasOneUse() &&
+          Add.getOperand(1) == ZeroCmpSrc.value()) {
         return DAG.getNode(Add.getOpcode(), DL, Add->getVTList(), Const,
-                           BsrFoo);
+                           Add.getOperand(1));
+      }
+
+      // We might have replaced the constant in the cmov with the zero source
+      // from the compare. If so change it to a literal zero.
+      if (Const == ZeroCmpSrc.value())
+        Const = DAG.getConstant(0, DL, VT);
+
+      // Ok, now make sure that Add is (add (cttz X), C2) and Const is a constant.
+      if (isa<ConstantSDNode>(Const) && Add.getOpcode() == ISD::ADD &&
+          Add.hasOneUse() && isa<ConstantSDNode>(Add.getOperand(1)) &&
+          (Add.getOperand(0).getOpcode() == ISD::CTTZ_ZERO_POISON ||
+           Add.getOperand(0).getOpcode() == ISD::CTTZ) &&
+          Add.getOperand(0).getOperand(0) == ZeroCmpSrc.value()) {
+        // This should constant fold.
+        SDValue Diff = DAG.getNode(ISD::SUB, DL, VT, Const, Add.getOperand(1));
+        SDValue CMov =
+            DAG.getNode(X86ISD::CMOV, DL, VT, Diff, Add.getOperand(0),
+                        DAG.getTargetConstant(X86::COND_NE, DL, MVT::i8), Cond);
+        return DAG.getNode(ISD::ADD, DL, VT, CMov, Add.getOperand(1));
       }
     }
   }
