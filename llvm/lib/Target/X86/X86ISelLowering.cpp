@@ -24393,8 +24393,10 @@ static SDValue EmitCmp(SDValue Op0, SDValue Op1, X86::CondCode X86CC,
   unsigned X86Opc = X86ISD::SUB;
   SDNode *IsdNode = nullptr;
   if ((X86CC == X86::COND_E || X86CC == X86::COND_NE) &&
-      ((IsdNode = DAG.getNodeIfExists(ISD::XOR, DAG.getVTList({CmpVT}), {Op0, Op1})) ||
-       (IsdNode = DAG.getNodeIfExists(ISD::XOR, DAG.getVTList({CmpVT}), {Op1, Op0}))))
+      ((IsdNode = DAG.getNodeIfExists(ISD::XOR, DAG.getVTList({CmpVT}),
+                                      {Op0, Op1})) ||
+       (IsdNode =
+            DAG.getNodeIfExists(ISD::XOR, DAG.getVTList({CmpVT}), {Op1, Op0}))))
     X86Opc = X86ISD::XOR;
 
   SDVTList VTs = DAG.getVTList(CmpVT, MVT::i32);
@@ -24402,8 +24404,8 @@ static SDValue EmitCmp(SDValue Op0, SDValue Op1, X86::CondCode X86CC,
 
   if (IsdNode != nullptr) {
 #ifndef NDEBUG
-  dbgs() << "coffin: " << __func__ << " ";
-  IsdNode->dump(&DAG);
+    dbgs() << "coffin: " << __func__ << " ";
+    IsdNode->dump(&DAG);
 #endif
 
     DAG.ReplaceAllUsesWith(IsdNode, &CmpOp);
@@ -25707,7 +25709,7 @@ static std::optional<SDValue> isX86ZeroCmp(SDValue Op) {
   unsigned Opc = Op.getOpcode();
   if (Opc == X86ISD::CMP && isNullConstant(Op.getOperand(1))) {
 #ifndef NDEBUG
-  dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
+    dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
 #endif
 
     return Op.getOperand(0);
@@ -25718,7 +25720,7 @@ static std::optional<SDValue> isX86ZeroCmp(SDValue Op) {
        Opc == X86ISD::SBB || Opc == X86ISD::OR || Opc == X86ISD::XOR ||
        Opc == X86ISD::AND || Opc == X86ISD::BEXTR || Opc == X86ISD::BZHI)) {
 #ifndef NDEBUG
-  dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
+    dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
 #endif
 
     return SDValue(Op.getNode(), 0);
@@ -25726,7 +25728,7 @@ static std::optional<SDValue> isX86ZeroCmp(SDValue Op) {
 
   if (Op.getResNo() == 1 && (Opc == X86ISD::BSF || Opc == X86ISD::BSR)) {
 #ifndef NDEBUG
-  dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
+    dbgs() << "coffin: " << __func__ << ":" << __LINE__ << "\n";
 #endif
 
     return Op.getOperand(1);
