@@ -50370,7 +50370,8 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
       if (Const == ZeroCmpSrc.value())
         Const = DAG.getConstant(0, DL, VT);
 
-      // Ok, now make sure that Add is (add (cttz X), C2) and Const is a constant.
+      // Ok, now make sure that Add is (add (cttz X), C2) and Const is a
+      // constant.
       if (isa<ConstantSDNode>(Const) && Add.getOpcode() == ISD::ADD &&
           Add.hasOneUse() && isa<ConstantSDNode>(Add.getOperand(1)) &&
           (Add.getOperand(0).getOpcode() == ISD::CTTZ_ZERO_POISON ||
