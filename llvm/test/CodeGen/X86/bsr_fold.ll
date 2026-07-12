@@ -31,6 +31,26 @@ define i32 @bsr_inc_fold(i32 %input, i32 %initial) nounwind {
 }
 
 define i32 @bsr_xor_fold(i32 %a, i32 %b) nounwind {
+; X86-LABEL: bsr_xor_fold:
+; X86:       # %bb.0:
+; X86-NEXT:    movl {{[0-9]+}}(%esp), %ecx
+; X86-NEXT:    movl %ecx, %eax
+; X86-NEXT:    xorl $7, %eax
+; X86-NEXT:    xorl $7, %ecx
+; X86-NEXT:    je .LBB1_1
+; X86-NEXT:  # %bb.2:
+; X86-NEXT:    bsrl %eax, %eax
+; X86-NEXT:    retl
+; X86-NEXT:  .LBB1_1:
+; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
+; X86-NEXT:    retl
+;
+; X64-LABEL: bsr_xor_fold:
+; X64:       # %bb.0:
+; X64-NEXT:    movl %esi, %eax
+; X64-NEXT:    xorl $7, %edi
+; X64-NEXT:    bsrl %edi, %eax
+; X64-NEXT:    retq
   %cmp = icmp eq i32 %a, 7
   %xor = xor i32 %a, 7
   %1 = tail call range(i32 0, 33) i32 @llvm.ctlz.i32(i32 %xor, i1 true)
