@@ -50390,7 +50390,8 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
     SDValue BsrOp = FalseOp;
     std::optional<SDValue> ZeroCmpSrc = isX86ZeroCmp(Cond);
     if (ZeroCmpSrc.has_value() && ZeroCmpSrc.value().hasOneUse() &&
-        Subtarget.hasBitScanPassThrough() && BsrOp.getResNo() == 0 && BsrOp.hasOneUse()) {
+        Subtarget.hasBitScanPassThrough() && BsrOp.getResNo() == 0 &&
+        BsrOp.hasOneUse()) {
       SDValue BsrFoo = BsrOp.getOperand(1);
       if (BsrFoo == ZeroCmpSrc.value()) {
         return DAG.getNode(BsrOp.getOpcode(), DL, BsrOp->getVTList(), TrueOp,
