@@ -29,3 +29,12 @@ define i32 @bsr_inc_fold(i32 %input, i32 %initial) nounwind {
   %cond.i = select i1 %cmp.i, i32 %initial, i32 %sub.i
   ret i32 %cond.i
 }
+
+define i32 @bsr_xor_fold(i32 %a, i32 %b) nounwind {
+  %cmp = icmp eq i32 %a, 7
+  %xor = xor i32 %a, 7
+  %1 = tail call range(i32 0, 33) i32 @llvm.ctlz.i32(i32 %xor, i1 true)
+  %sub = xor i32 %1, 31
+  %cond = select i1 %cmp, i32 %b, i32 %sub
+  ret i32 %cond
+}
