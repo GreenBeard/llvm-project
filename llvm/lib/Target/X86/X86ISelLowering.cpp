@@ -24196,6 +24196,7 @@ static bool isProfitableToUseFlagOp(SDValue Op) {
 
 /// Emit nodes that will be selected as "test Op0,Op0", or something
 /// equivalent.
+// coffin source of handling ISD::XOR and X86ISD::XOR
 static SDValue EmitTest(SDValue Op, X86::CondCode X86CC, const SDLoc &dl,
                         SelectionDAG &DAG, const X86Subtarget &Subtarget) {
   // CF and OF aren't always set the way we want. Determine which
@@ -24390,13 +24391,19 @@ static SDValue EmitCmp(SDValue Op0, SDValue Op1, X86::CondCode X86CC,
   // If we already have an XOR of the ops, use that to check for equality.
   // Else use SUB instead of CMP to enable CSE between SUB and CMP.
   unsigned X86Opc = X86ISD::SUB;
+  SDNode *IsdNode = nullptr;
   if ((X86CC == X86::COND_E || X86CC == X86::COND_NE) &&
-      (DAG.doesNodeExist(ISD::XOR, DAG.getVTList({CmpVT}), {Op0, Op1}) ||
-       DAG.doesNodeExist(ISD::XOR, DAG.getVTList({CmpVT}), {Op1, Op0})))
+      ((IsdNode = DAG.getNodeIfExists(ISD::XOR, DAG.getVTList({CmpVT}), {Op0, Op1})) ||
+       (IsdNode = DAG.getNodeIfExists(ISD::XOR, DAG.getVTList({CmpVT}), {Op1, Op0}))))
     X86Opc = X86ISD::XOR;
 
   SDVTList VTs = DAG.getVTList(CmpVT, MVT::i32);
   SDValue CmpOp = DAG.getNode(X86Opc, dl, VTs, Op0, Op1);
+
+  if (IsdNode != nullptr) {
+    DAG.ReplaceAllUsesWith(IsdNode, &CmpOp);
+  }
+
   return CmpOp.getValue(1);
 }
 
@@ -59209,6 +59216,7 @@ static bool onlyZeroFlagUsed(SDValue Flags) {
   return true;
 }
 
+// coffin source of handling ISD::XOR and X86ISD::XOR
 static SDValue combineCMP(SDNode *N, SelectionDAG &DAG,
                           TargetLowering::DAGCombinerInfo &DCI,
                           const X86Subtarget &Subtarget) {
