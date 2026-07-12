@@ -50388,24 +50388,19 @@ static SDValue combineCMov(SDNode *N, SelectionDAG &DAG,
   // Or (CMOV (BSR ?, X), Y, (X == 0)) -> (BSR Y, X)
   if ((CC == X86::COND_NE || CC == X86::COND_E) &&
       FalseOp.getOpcode() == X86ISD::BSR) {
-    SDValue BsrOp;
-    SDValue YOp;
-
-    if (CC == X86::COND_E) {
-      BsrOp = FalseOp;
-      YOp = TrueOp;
-    } else {
-      BsrOp = TrueOp;
-      YOp = FalseOp;
-    }
+    SDValue Add = TrueOp;
+    SDValue Const = FalseOp;
+    // Canonicalize the condition code for easier matching and output.
+    if (CC == X86::COND_E)
+      std::swap(Add, Const);
 
     std::optional<SDValue> ZeroCmpSrc = isX86ZeroCmp(Cond);
     if (ZeroCmpSrc.has_value() && ZeroCmpSrc.value().hasOneUse() &&
-        Subtarget.hasBitScanPassThrough() && BsrOp.getResNo() == 0 &&
-        BsrOp.hasOneUse()) {
-      SDValue BsrFoo = BsrOp.getOperand(1);
+        Subtarget.hasBitScanPassThrough() && Add.getResNo() == 0 &&
+        Add.hasOneUse()) {
+      SDValue BsrFoo = Add.getOperand(1);
       if (BsrFoo == ZeroCmpSrc.value()) {
-        return DAG.getNode(BsrOp.getOpcode(), DL, BsrOp->getVTList(), YOp,
+        return DAG.getNode(Add.getOpcode(), DL, Add->getVTList(), Const,
                            BsrFoo);
       }
     }
