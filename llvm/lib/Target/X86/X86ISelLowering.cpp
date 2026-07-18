@@ -24077,13 +24077,21 @@ static SDValue EmitCmp(SDValue Op0, SDValue Op1, X86::CondCode X86CC,
   // If we already have an XOR of the ops, use that to check for equality.
   // Else use SUB instead of CMP to enable CSE between SUB and CMP.
   unsigned X86Opc = X86ISD::SUB;
+  SDNode *IsdNode = nullptr;
   if ((X86CC == X86::COND_E || X86CC == X86::COND_NE) &&
-      (DAG.doesNodeExist(ISD::XOR, DAG.getVTList({CmpVT}), {Op0, Op1}) ||
-       DAG.doesNodeExist(ISD::XOR, DAG.getVTList({CmpVT}), {Op1, Op0})))
+      ((IsdNode = DAG.getNodeIfExists(ISD::XOR, DAG.getVTList({CmpVT}),
+                                      {Op0, Op1})) ||
+       (IsdNode =
+            DAG.getNodeIfExists(ISD::XOR, DAG.getVTList({CmpVT}), {Op1, Op0}))))
     X86Opc = X86ISD::XOR;
 
   SDVTList VTs = DAG.getVTList(CmpVT, MVT::i32);
   SDValue CmpOp = DAG.getNode(X86Opc, dl, VTs, Op0, Op1);
+
+  if (IsdNode != nullptr) {
+    DAG.ReplaceAllUsesWith(IsdNode, &CmpOp);
+  }
+
   return CmpOp.getValue(1);
 }
 

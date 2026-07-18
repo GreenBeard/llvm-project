@@ -58,17 +58,13 @@ define zeroext i1 @cmp_xor_i32_rmw(ptr %a) {
 ; X86-LABEL: cmp_xor_i32_rmw:
 ; X86:       # %bb.0:
 ; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
-; X86-NEXT:    movl (%eax), %ecx
-; X86-NEXT:    xorl $7, %ecx
-; X86-NEXT:    movl %ecx, (%eax)
+; X86-NEXT:    xorl $7, (%eax)
 ; X86-NEXT:    setne %al
 ; X86-NEXT:    retl
 ;
 ; X64-LABEL: cmp_xor_i32_rmw:
 ; X64:       # %bb.0:
-; X64-NEXT:    movl (%rdi), %eax
-; X64-NEXT:    xorl $7, %eax
-; X64-NEXT:    movl %eax, (%rdi)
+; X64-NEXT:    xorl $7, (%rdi)
 ; X64-NEXT:    setne %al
 ; X64-NEXT:    retq
   %data = load i32, ptr %a
