@@ -73,3 +73,23 @@ define zeroext i1 @cmp_xor_i32_rmw(ptr %a) {
   %cmp = icmp ne i32 %data, 7
   ret i1 %cmp
 }
+
+define zeroext i1 @cmp_xor_i32_rmw_implicit_not(ptr %a) {
+; X86-LABEL: cmp_xor_i32_rmw_implicit_not:
+; X86:       # %bb.0:
+; X86-NEXT:    movl {{[0-9]+}}(%esp), %eax
+; X86-NEXT:    xorl $-1, (%eax)
+; X86-NEXT:    setne %al
+; X86-NEXT:    retl
+;
+; X64-LABEL: cmp_xor_i32_rmw_implicit_not:
+; X64:       # %bb.0:
+; X64-NEXT:    xorl $-1, (%rdi)
+; X64-NEXT:    setne %al
+; X64-NEXT:    retq
+  %data = load i32, ptr %a, align 4
+  %xor = xor i32 %data, -1
+  store i32 %xor, ptr %a, align 4
+  %cmp = icmp ne i32 %data, -1
+  ret i1 %cmp
+}
